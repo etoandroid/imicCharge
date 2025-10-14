@@ -1,7 +1,6 @@
-﻿using Android.Net;
-using imicCharge.APP.Services;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
+using imicCharge.APP.Services;
 
 namespace imicCharge.APP;
 
