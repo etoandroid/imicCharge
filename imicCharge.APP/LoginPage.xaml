@@ -64,6 +64,14 @@
                         TextColor="White"
                         BorderColor="{StaticResource FirdaAccentLightBlue}"
                         BorderWidth="1"/>
+
+                    <Button
+                        x:Name="RegisterButton"
+                        Text="Registrer ny brukar"
+                        Clicked="OnRegisterClicked"
+                        HorizontalOptions="Fill"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource FirdaAccentLightBlue}"/>
                 </VerticalStackLayout>
             </Frame>
 

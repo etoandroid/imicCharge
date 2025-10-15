@@ -1,19 +1,10 @@
-﻿using System.Text;
-using System.Text.Json;
-using imicCharge.APP.Services;
+﻿using imicCharge.APP.Services;
 
 namespace imicCharge.APP;
 
 public partial class LoginPage : ContentPage
 {
     private readonly ApiService _apiService;
-    private class LoginResponse
-    {
-        public string? tokenType { get; set; }
-        public string? accessToken { get; set; }
-        public int expiresIn { get; set; }
-        public string? refreshToken { get; set; }
-    }
 
     public LoginPage()
     {
@@ -24,38 +15,50 @@ public partial class LoginPage : ContentPage
     private async void OnLoginClicked(object sender, EventArgs e)
     {
         StatusLabel.Text = "Loggar inn...";
+        var email = EmailEntry.Text;
+        var password = PasswordEntry.Text;
 
-        var loginData = new
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            email = EmailEntry.Text,
-            password = PasswordEntry.Text
-        };
-
-        try
-        {
-            var json = JsonSerializer.Serialize(loginData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var client = _apiService.GetHttpClient();
-            var response = await client.PostAsync("login", content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var loginResponse = JsonSerializer.Deserialize<LoginResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                // TODO: Store access token securely
-
-                await Shell.Current.GoToAsync($"//{nameof(MainPage)}");
-            }
-            else
-            {
-                StatusLabel.Text = $"Feil: {response.StatusCode}";
-            }
+            StatusLabel.Text = "E-post og passord kan ikkje vere tomme.";
+            return;
         }
-        catch (Exception ex)
+
+        var loginResponse = await _apiService.LoginAsync(email, password);
+
+        if (loginResponse?.AccessToken != null)
         {
-            StatusLabel.Text = $"Nettverksfeil: {ex.Message}";
+            await SecureStorage.SetAsync("access_token", loginResponse.AccessToken);
+            await Shell.Current.GoToAsync($"//{nameof(MainPage)}");
+        }
+        else
+        {
+            StatusLabel.Text = "Innlogging feila. Sjekk e-post og passord.";
+        }
+    }
+
+    private async void OnRegisterClicked(object sender, EventArgs e)
+    {
+        StatusLabel.Text = "Registrerer...";
+        var email = EmailEntry.Text;
+        var password = PasswordEntry.Text;
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            StatusLabel.Text = "E-post og passord kan ikkje vere tomme.";
+            return;
+        }
+
+        bool success = await _apiService.RegisterAsync(email, password);
+
+        if (success)
+        {
+            await DisplayAlert("Suksess", "Brukar registrert! Du kan no logge inn.", "OK");
+            StatusLabel.Text = "Brukar registrert. Ver venleg og logg inn.";
+        }
+        else
+        {
+            StatusLabel.Text = "Registrering feila. Prøv ei anna e-postadresse.";
         }
     }
 }

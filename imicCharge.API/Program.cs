@@ -45,9 +45,6 @@ builder.Services.AddScoped<imicCharge.API.Services.EaseeService>();
 // Configure Stripe API key from appsettings.json
 StripeConfiguration.ApiKey = builder.Configuration.GetSection("StripeSettings")["SecretKey"];
 
-// Configure Stripe API key from appsettings.json
-StripeConfiguration.ApiKey = builder.Configuration.GetSection("StripeSettings")["SecretKey"];
-
 // Configure database connection
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
