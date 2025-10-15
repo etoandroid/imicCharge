@@ -39,6 +39,11 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<PaymentIntentService>();
 builder.Services.AddScoped<UserManager<ApplicationUser>>();
+builder.Services.AddHttpClient<imicCharge.API.Services.EaseeService>();
+builder.Services.AddScoped<imicCharge.API.Services.EaseeService>();
+
+// Configure Stripe API key from appsettings.json
+StripeConfiguration.ApiKey = builder.Configuration.GetSection("StripeSettings")["SecretKey"];
 
 // Configure Stripe API key from appsettings.json
 StripeConfiguration.ApiKey = builder.Configuration.GetSection("StripeSettings")["SecretKey"];
