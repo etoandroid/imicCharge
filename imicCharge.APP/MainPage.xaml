@@ -2,22 +2,42 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="imicCharge.APP.MainPage"
-             Title="Hovudside">
-    <VerticalStackLayout
-        Spacing="25"
-        Padding="30,0"
-        VerticalOptions="Center">
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{StaticResource FirdaPrimaryDarkBlue}">
 
-        <Label
-            Text="Du er logga inn!"
-            SemanticProperties.HeadingLevel="Level1"
-            FontSize="32"
-            HorizontalOptions="Center" />
+    <VerticalStackLayout Padding="20" Spacing="20">
+
+        <Image Source="logo_firda.png" HeightRequest="80" HorizontalOptions="Center" Margin="0,20,0,0"/>
+        <Label Text="Min konto" FontSize="32" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+
+        <Frame Padding="20" CornerRadius="10" BackgroundColor="#2a306c" BorderColor="Transparent">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="DIN SALDO" FontSize="14" TextColor="LightGray" HorizontalOptions="Center"/>
+                <Label x:Name="BalanceLabel" Text="--- kr" FontSize="40" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center"/>
+                <Button Text="Fyll på konto" x:Name="TopUpButton" HorizontalOptions="Center" Margin="0,10,0,0" BackgroundColor="{StaticResource FirdaAccentLightBlue}" TextColor="White"/>
+            </VerticalStackLayout>
+        </Frame>
+
+        <Frame Padding="20" CornerRadius="10" BackgroundColor="#2a306c" BorderColor="Transparent">
+            <VerticalStackLayout Spacing="15">
+                <Label Text="LADEKONTROLL" FontSize="14" TextColor="LightGray" HorizontalOptions="Center"/>
+                <Entry Placeholder="Skriv inn ladar-ID" x:Name="ChargerIdEntry" HorizontalOptions="Fill" TextColor="White" PlaceholderColor="LightGray"/>
+                <Button Text="Start Lading" x:Name="StartChargeButton" HorizontalOptions="Fill" BackgroundColor="Green" TextColor="White"/>
+                <Button Text="Stopp Lading" x:Name="StopChargeButton" HorizontalOptions="Fill" BackgroundColor="DarkRed" TextColor="White"/>
+            </VerticalStackLayout>
+        </Frame>
 
         <Button
             x:Name="LogoutButton"
             Text="Logg ut"
             Clicked="OnLogoutClicked"
-            HorizontalOptions="Center" />
+            HorizontalOptions="Center" 
+            VerticalOptions="EndAndExpand"
+            BackgroundColor="Transparent"
+            BorderColor="White"
+            BorderWidth="1"
+            TextColor="White"
+            Margin="0,20,0,20"/>
+
     </VerticalStackLayout>
 </ContentPage>
