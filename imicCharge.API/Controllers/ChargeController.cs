@@ -1,6 +1,7 @@
 ﻿using imicCharge.API.Data;
 using imicCharge.API.Extensions;
 using imicCharge.API.Models;
+using imicCharge.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -11,8 +12,10 @@ namespace imicCharge.API.Controllers
     [Route("api/[controller]")]
     [Authorize]
     public class ChargeController(
-        UserManager<ApplicationUser> userManager,
-        ILogger<ChargeController> logger) : ControllerBase
+    UserManager<ApplicationUser> userManager,
+    ILogger<ChargeController> logger,
+    EaseeService easeeService,
+    IConfiguration configuration) : ControllerBase // Legg til IConfiguration
     {
         /// <summary>
         /// Initiates a charging session for the authenticated user on a specified charger.
@@ -21,50 +24,73 @@ namespace imicCharge.API.Controllers
         public async Task<IActionResult> StartCharging([FromBody] StartChargingRequest request)
         {
             var userId = User.GetUserId();
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("Kunne ikkje identifisere brukar.");
-            }
-
-            var user = await userManager.FindByIdAsync(userId);
+            var user = await userManager.FindByIdAsync(userId!);
             if (user == null)
             {
                 return NotFound("Brukar ikkje funnen.");
             }
 
-            // --- TODO: Business Logic ---
-            // 1. Check if user.AccountBalance is sufficient.
-            // 2. Call EaseeService to start charging on request.ChargerId.
-            // 3. Handle success or failure response from EaseeService.
+            // Business Logic: Check account balance
+            if (user.AccountBalance <= 0)
+            {
+                return BadRequest(new { error = "Du har for lita saldo. Fyll på kontoen din før du startar lading." });
+            }
 
-            logger.LogInformation("User {UserId} requested to start charging on charger {ChargerId}", userId, request.ChargerId);
+            logger.LogInformation("User {UserId} starting charge on {ChargerId}. Balance: {Balance}", userId, request.ChargerId, user.AccountBalance);
 
-            // Placeholder response
-            return Ok(new { message = $"Ladeforespørsel for lader {request.ChargerId} er motteke." });
+            var success = await easeeService.StartChargingAsync(request.ChargerId);
+
+            if (success)
+            {
+                return Ok(new { message = $"Ladeførespurnad for ladar {request.ChargerId} er sendt." });
+            }
+
+            return StatusCode(500, new { error = $"Klarte ikkje å starte lading for ladar {request.ChargerId}." });
         }
 
         /// <summary>
-        /// Stops the current charging session for the authenticated user on a specified charger.
+        /// Stops the current charging session and processes the payment.
         /// </summary>
         [HttpPost("stop")]
         public async Task<IActionResult> StopCharging([FromBody] StopChargingRequest request)
         {
             var userId = User.GetUserId();
-            if (string.IsNullOrEmpty(userId))
+            var user = await userManager.FindByIdAsync(userId!);
+            if (user == null)
             {
-                return Unauthorized("Kunne ikkje identifisere brukar.");
+                return NotFound("Brukar ikkje funnen.");
             }
 
-            // --- TODO: Business Logic ---
-            // 1. Call EaseeService to stop charging on request.ChargerId.
-            // 2. On success, get total energy used from EaseeService.
-            // 3. Calculate the cost and deduct it from the user's AccountBalance.
-            // 4. Update the user in the database.
+            logger.LogInformation("User {UserId} stopping charge on {ChargerId}", userId, request.ChargerId);
 
-            logger.LogInformation("User {UserId} requested to stop charging on charger {ChargerId}", userId, request.ChargerId);
+            var success = await easeeService.StopChargingAsync(request.ChargerId);
 
-            // Placeholder response
-            return Ok(new { message = $"Stopp-forespørsel for ladar {request.ChargerId} er motteke." });
+            if (!success)
+            {
+                return StatusCode(500, new { error = $"Klarte ikkje å stoppe lading for ladar {request.ChargerId}." });
+            }
+
+            // Business Logic: Get session details and deduct cost
+            var session = await easeeService.GetLatestChargingSessionAsync(request.ChargerId);
+            if (session == null)
+            {
+                logger.LogWarning("Could not retrieve latest charging session for charger {ChargerId}", request.ChargerId);
+                return Ok(new { message = "Lading stoppa, men kunne ikkje hente ladeforbruk. Kontakt kundeservice." });
+            }
+
+            var pricePerKwh = configuration.GetValue<decimal>("ChargingSettings:PricePerKwh");
+            var cost = (decimal)session.Kwh * pricePerKwh;
+
+            user.AccountBalance -= cost;
+            await userManager.UpdateAsync(user);
+
+            logger.LogInformation("Charged user {UserId} for {Kwh} kWh. Cost: {Cost}. New balance: {Balance}", userId, session.Kwh, cost, user.AccountBalance);
+
+            return Ok(new
+            {
+                message = $"Lading stoppa. Du har blitt belasta {cost:C} for {session.Kwh:F2} kWh.",
+                newBalance = user.AccountBalance
+            });
         }
     }
 }
