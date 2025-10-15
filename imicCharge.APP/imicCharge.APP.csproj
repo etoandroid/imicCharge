@@ -4,6 +4,8 @@
 		<TargetFrameworks>net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 
+		<WindowsPackageType>None</WindowsPackageType>
+
 		<OutputType>Exe</OutputType>
 		<RootNamespace>imicCharge.APP</RootNamespace>
 		<UseMaui>true</UseMaui>
@@ -11,8 +13,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
-		<ApplicationTitle>imicCharge</ApplicationTitle>
-		<ApplicationId>com.imic.chargeapp</ApplicationId>
+		<ApplicationTitle>imicCharge.APP</ApplicationTitle>
+		<ApplicationId>com.companyname.imiccharge.app</ApplicationId>
 
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
@@ -32,14 +34,11 @@
 		<MauiAsset Include="Resources\Raw\**" />
 	</ItemGroup>
 
-	<!-- Denne seksjonen er endret for å være mer robust -->
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0-preview.5.24306.7" />
 	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Resources\Images\" />
-	</ItemGroup>
 
 </Project>
+
