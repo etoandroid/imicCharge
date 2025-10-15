@@ -9,7 +9,7 @@ using Stripe;
 namespace imicCharge.API.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class PaymentController(
         PaymentIntentService paymentIntentService,
         UserManager<ApplicationUser> userManager,

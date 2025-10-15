@@ -29,7 +29,7 @@ public partial class LoginPage : ContentPage
         if (loginResponse?.AccessToken != null)
         {
             await SecureStorage.SetAsync("access_token", loginResponse.AccessToken);
-            await Shell.Current.GoToAsync($"//{nameof(MainPage)}");
+            await Shell.Current.GoToAsync(nameof(MainPage));
         }
         else
         {
