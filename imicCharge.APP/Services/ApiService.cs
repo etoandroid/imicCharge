@@ -18,6 +18,19 @@ public class StopChargingResponse
     public decimal NewBalance { get; set; }
 }
 
+public class ChargingStatusResponse
+{
+    public double Kwh { get; set; }
+    public decimal RemainingBalance { get; set; }
+    public double PowerUsage { get; set; }
+}
+
+public class EaseeCharger
+{
+    public string? Id { get; set; }
+    public string? Name { get; set; }
+}
+
 public class ApiService
 {
     private readonly string _baseUrl;
@@ -124,6 +137,32 @@ public class ApiService
     }
 
     /// <summary>
+    /// Retrieves a list of all chargers available to the user.
+    /// </summary>
+    public async Task<List<EaseeCharger>?> GetChargersAsync()
+    {
+        var client = GetHttpClient();
+        var token = await SecureStorage.GetAsync("access_token");
+        if (string.IsNullOrEmpty(token)) return null;
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            var response = await client.GetAsync("api/Charge/chargers");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<EaseeCharger>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching chargers: {ex.Message}");
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Sends a request to the API to start a charging session.
     /// </summary>
     public async Task<bool> StartChargingAsync(string chargerId)
@@ -170,6 +209,32 @@ public class ApiService
         catch (Exception ex)
         {
             Console.WriteLine($"Error stopping charge: {ex.Message}");
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Retrieves live charging status from the API.
+    /// </summary>
+    public async Task<ChargingStatusResponse?> GetChargingStatusAsync(string chargerId)
+    {
+        var client = GetHttpClient();
+        var token = await SecureStorage.GetAsync("access_token");
+        if (string.IsNullOrEmpty(token)) return null;
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            var response = await client.GetAsync($"api/Charge/status/{chargerId}");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ChargingStatusResponse>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching charging status: {ex.Message}");
         }
         return null;
     }

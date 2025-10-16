@@ -12,7 +12,6 @@ public partial class MainPage : ContentPage
         _apiService = new ApiService();
 
         StartChargeButton.Clicked += OnStartChargeClicked;
-        StopChargeButton.Clicked += OnStopChargeClicked;
         TopUpButton.Clicked += OnTopUpClicked;
     }
 
@@ -20,6 +19,20 @@ public partial class MainPage : ContentPage
     {
         base.OnAppearing();
         await UpdateBalanceDisplay();
+        await LoadChargers();
+    }
+
+    private async Task LoadChargers()
+    {
+        var chargers = await _apiService.GetChargersAsync();
+        if (chargers != null)
+        {
+            ChargersView.ItemsSource = chargers;
+        }
+        else
+        {
+            ChargeStatusLabel.Text = "Kunne ikkje hente ladarar.";
+        }
     }
 
     private async Task UpdateBalanceDisplay()
@@ -36,57 +49,42 @@ public partial class MainPage : ContentPage
         }
     }
 
-    private async void OnLogoutClicked(object sender, EventArgs e)
+    private async void OnLogoutClicked(object? sender, EventArgs e)
     {
         SecureStorage.Remove("access_token");
         await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
     }
 
-    private async void OnStartChargeClicked(object sender, EventArgs e)
+    private async void OnStartChargeClicked(object? sender, EventArgs e)
     {
-        var chargerId = ChargerIdEntry.Text;
-        if (string.IsNullOrWhiteSpace(chargerId))
+        var selectedCharger = ChargersView.SelectedItem as EaseeCharger;
+
+        if (selectedCharger == null)
         {
-            await DisplayAlert("Feil", "Du må skrive inn ein ladar-ID.", "OK");
+            ChargeStatusLabel.Text = "Du må velje ein ladar frå lista.";
             return;
         }
 
-        var success = await _apiService.StartChargingAsync(chargerId);
+        if (string.IsNullOrEmpty(selectedCharger.Id))
+        {
+            ChargeStatusLabel.Text = "Den valde ladaren har ingen gyldig ID.";
+            return;
+        }
+
+        ChargeStatusLabel.Text = "Sender førespurnad...";
+        var success = await _apiService.StartChargingAsync(selectedCharger.Id);
 
         if (success)
         {
-            await DisplayAlert("Suksess", $"Førespurnad om å starte lading på ladar {chargerId} er sendt.", "OK");
+            await Shell.Current.GoToAsync($"{nameof(ChargingPage)}?ChargerId={selectedCharger.Id}");
         }
         else
         {
-            await DisplayAlert("Feil", "Kunne ikkje starte lading. Sjekk saldo og prøv igjen.", "OK");
+            ChargeStatusLabel.Text = "Kunne ikkje starte lading.";
         }
     }
 
-    private async void OnStopChargeClicked(object sender, EventArgs e)
-    {
-        var chargerId = ChargerIdEntry.Text;
-        if (string.IsNullOrWhiteSpace(chargerId))
-        {
-            await DisplayAlert("Feil", "Du må skrive inn ein ladar-ID.", "OK");
-            return;
-        }
-
-        var response = await _apiService.StopChargingAsync(chargerId);
-
-        if (response != null)
-        {
-            // Show message from API response and update visible account balance
-            await DisplayAlert("Lading stoppa", response.Message, "OK");
-            BalanceLabel.Text = $"{response.NewBalance:C}";
-        }
-        else
-        {
-            await DisplayAlert("Feil", "Kunne ikkje stoppe lading.", "OK");
-        }
-    }
-
-    private async void OnTopUpClicked(object sender, EventArgs e)
+    private async void OnTopUpClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync(nameof(TopUpPage));
     }

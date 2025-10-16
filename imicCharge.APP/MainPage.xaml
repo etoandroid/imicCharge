@@ -1,43 +1,70 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:imicCharge.APP.Services"
              x:Class="imicCharge.APP.MainPage"
              Shell.NavBarIsVisible="False"
              BackgroundColor="{StaticResource FirdaPrimaryDarkBlue}">
 
-    <VerticalStackLayout Padding="20" Spacing="20">
+    <ScrollView>
+        <VerticalStackLayout Grid.Row="0" Grid.RowSpan="2" Padding="20" Spacing="3">
 
-        <Image Source="logo_firda.png" HeightRequest="80" HorizontalOptions="Center" Margin="0,20,0,0"/>
-        <Label Text="Min konto" FontSize="32" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                <Image
+                Source="logo_firda.png"
+                HeightRequest="70"
+                Margin="0,30,0,10"
+                SemanticProperties.Description="Firda Seafood logo" />
+                <Label Text="Min konto" TextColor="White" FontSize="19" Margin="0" FontAttributes="Bold" HorizontalOptions="Center" />
 
-        <Frame Padding="20" CornerRadius="10" BackgroundColor="#2a306c" BorderColor="Transparent">
-            <VerticalStackLayout Spacing="10">
-                <Label Text="DIN SALDO" FontSize="14" TextColor="LightGray" HorizontalOptions="Center"/>
-                <Label x:Name="BalanceLabel" Text="--- kr" FontSize="40" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center"/>
-                <Button Text="Fyll på konto" x:Name="TopUpButton" HorizontalOptions="Center" Margin="0,10,0,0" BackgroundColor="{StaticResource FirdaAccentLightBlue}" TextColor="White"/>
-            </VerticalStackLayout>
-        </Frame>
+            <!-- Account balance -->
+            <Border Padding="0,10,0,10" StrokeShape="RoundRectangle 10,10,10,10" BackgroundColor="#2a306c" StrokeThickness="0">
+                <VerticalStackLayout Spacing="3" Margin="0" Padding="0">
+                    <HorizontalStackLayout HorizontalOptions="Center" Margin="0" Padding="0">
+                        <Label Text="Innlogget som " Margin="0,0,10,0" FontSize="14" TextColor="White" VerticalOptions="Center" HorizontalOptions="Start" />
+                        <Label x:Name="AccountName" Text="test123@test123.no" Margin="0,0,10,0" FontSize="14" VerticalOptions="Center" TextColor="White" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout HorizontalOptions="Center" Margin="0" Padding="0">
+                        <Label Text="Din saldo:" Margin="0,0,10,0" FontSize="14" TextColor="White" VerticalOptions="Center" HorizontalOptions="Start" />
+                        <Label x:Name="BalanceLabel" Text="--- kr" Margin="0,0,10,0" FontSize="14" VerticalOptions="Center" TextColor="White" />
+                        <Button Text="Fyll på konto" x:Name="TopUpButton" VerticalOptions="Center" HorizontalOptions="End" Padding="10,0,10,0" Margin="0,0,0,0" BackgroundColor="{StaticResource FirdaAccentLightBlue}" TextColor="White"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
 
-        <Frame Padding="20" CornerRadius="10" BackgroundColor="#2a306c" BorderColor="Transparent">
-            <VerticalStackLayout Spacing="15">
-                <Label Text="LADEKONTROLL" FontSize="14" TextColor="LightGray" HorizontalOptions="Center"/>
-                <Entry Placeholder="Skriv inn ladar-ID" x:Name="ChargerIdEntry" HorizontalOptions="Fill" TextColor="White" PlaceholderColor="LightGray"/>
-                <Button Text="Start Lading" x:Name="StartChargeButton" HorizontalOptions="Fill" BackgroundColor="Green" TextColor="White"/>
-                <Button Text="Stopp Lading" x:Name="StopChargeButton" HorizontalOptions="Fill" BackgroundColor="DarkRed" TextColor="White"/>
-            </VerticalStackLayout>
-        </Frame>
+            <!-- List of chargers -->
+            <Border Padding="20" StrokeShape="RoundRectangle 10,10,10,10" BackgroundColor="#2a306c" StrokeThickness="0">
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="VEL EIN LADAR" FontSize="14" TextColor="LightGray" HorizontalOptions="Center"/>
+
+                    <CollectionView x:Name="ChargersView" SelectionMode="Single">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="local:EaseeCharger">
+                                <Border Padding="15" Margin="0,5" BackgroundColor="#1C2251" Stroke="{StaticResource FirdaAccentLightBlue}" StrokeShape="RoundRectangle 8,8,8,8">
+                                    <Label Text="{Binding Name}" TextColor="White" FontSize="18"/>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Button Text="Start Lading" x:Name="StartChargeButton" HorizontalOptions="Fill" BackgroundColor="Green" TextColor="White"/>
+                    <Label x:Name="ChargeStatusLabel" HorizontalOptions="Center" TextColor="White" Margin="0,10,0,0"/>
+                </VerticalStackLayout>
+            </Border>
 
         <Button
+            Grid.Row="2"
             x:Name="LogoutButton"
             Text="Logg ut"
             Clicked="OnLogoutClicked"
             HorizontalOptions="Center" 
-            VerticalOptions="EndAndExpand"
+            VerticalOptions="End"
             BackgroundColor="Transparent"
             BorderColor="White"
             BorderWidth="1"
             TextColor="White"
             Margin="0,20,0,20"/>
+            
+        </VerticalStackLayout>
+    </ScrollView>
 
-    </VerticalStackLayout>
 </ContentPage>

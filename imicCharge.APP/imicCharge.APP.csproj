@@ -41,6 +41,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Update="ChargingPage.xaml.cs">
+	    <DependentUpon>ChargingPage.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="TopUpPage.xaml.cs">
 	    <DependentUpon>TopUpPage.xaml</DependentUpon>
 	  </Compile>
@@ -50,6 +53,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <MauiXaml Update="ChargingPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="PaymentPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

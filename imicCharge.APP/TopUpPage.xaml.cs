@@ -16,22 +16,24 @@ public partial class TopUpPage : ContentPage
     {
         if (!decimal.TryParse(AmountEntry.Text, out var amount) || amount <= 0)
         {
-            await DisplayAlert("Ugyldig beløp", "Ver venleg og skriv inn eit gyldig beløp.", "OK");
+            StatusLabel.Text = "Ver venleg og skriv inn eit gyldig beløp.";
             return;
         }
 
+        StatusLabel.Text = "Gjer klar betaling...";
         var checkoutUrl = await _apiService.CreateCheckoutSessionAsync(amount);
 
         if (string.IsNullOrEmpty(checkoutUrl))
         {
-            await DisplayAlert("Feil", "Kunne ikkje starte betaling. Prøv igjen seinare.", "OK");
+            StatusLabel.Text = "Kunne ikkje starte betaling. Prøv igjen seinare.";
             return;
         }
 
         // Send URL-en til PaymentPage
         await Shell.Current.GoToAsync(nameof(PaymentPage), new Dictionary<string, object>
-        {
-            { "CheckoutUrl", checkoutUrl }
-        });
+    {
+        { "CheckoutUrl", checkoutUrl }
+    });
     }
+
 }

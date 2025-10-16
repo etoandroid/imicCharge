@@ -12,7 +12,7 @@ public partial class LoginPage : ContentPage
         _apiService = new ApiService();
     }
 
-    private async void OnLoginClicked(object sender, EventArgs e)
+    private async void OnLoginClicked(object? sender, EventArgs e)
     {
         StatusLabel.Text = "Loggar inn...";
         var email = EmailEntry.Text;
@@ -29,7 +29,11 @@ public partial class LoginPage : ContentPage
         if (loginResponse?.AccessToken != null)
         {
             await SecureStorage.SetAsync("access_token", loginResponse.AccessToken);
-            await Shell.Current.GoToAsync(nameof(MainPage));
+
+            if (Application.Current?.Windows[0] != null)
+            {
+                Application.Current.Windows[0].Page = new AppShell();
+            }
         }
         else
         {
@@ -37,7 +41,7 @@ public partial class LoginPage : ContentPage
         }
     }
 
-    private async void OnRegisterClicked(object sender, EventArgs e)
+    private async void OnRegisterClicked(object? sender, EventArgs e)
     {
         StatusLabel.Text = "Registrerer...";
         var email = EmailEntry.Text;
@@ -53,7 +57,6 @@ public partial class LoginPage : ContentPage
 
         if (success)
         {
-            await DisplayAlert("Suksess", "Brukar registrert! Du kan no logge inn.", "OK");
             StatusLabel.Text = "Brukar registrert. Ver venleg og logg inn.";
         }
         else

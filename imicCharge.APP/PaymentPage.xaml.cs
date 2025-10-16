@@ -3,7 +3,7 @@
 [QueryProperty(nameof(CheckoutUrl), "CheckoutUrl")]
 public partial class PaymentPage : ContentPage
 {
-    public string CheckoutUrl { get; set; }
+    public string? CheckoutUrl { get; set; } // Endra til nullable
 
     public PaymentPage()
     {
@@ -25,7 +25,7 @@ public partial class PaymentPage : ContentPage
         }
     }
 
-    private async void OnWebViewNavigated(object sender, WebNavigatedEventArgs e)
+    private async void OnWebViewNavigated(object? sender, WebNavigatedEventArgs e)
     {
         if (e.Url.Contains("payment_success"))
         {

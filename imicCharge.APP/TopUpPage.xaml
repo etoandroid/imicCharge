@@ -29,5 +29,7 @@
             TextColor="White"
             Margin="0,20,0,0"/>
 
+        <Label x:Name="StatusLabel" HorizontalOptions="Center" TextColor="Red" Margin="0,10,0,0"/>
     </VerticalStackLayout>
+
 </ContentPage>

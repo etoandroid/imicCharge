@@ -7,60 +7,53 @@
 
     <ScrollView>
         <VerticalStackLayout
-            Padding="30,0"
-            Spacing="15"
+            Padding="0,0"
+            Spacing="3"
             VerticalOptions="Center"
             HorizontalOptions="Center">
 
             <!-- Logo -->
             <Image
                 Source="logo_firda.png"
-                HeightRequest="100"
-                Margin="0,20,0,20"
+                HeightRequest="70"
+                Margin="0,30,0,10"
                 SemanticProperties.Description="Firda Seafood logo" />
 
             <!-- App title -->
             <Label
-                Text="Firda FjordLading"
+                Text="Firda CarCharge"
                 TextColor="White"
-                FontSize="32"
+                FontSize="19"
+                Margin="0"
                 FontAttributes="Bold"
                 HorizontalOptions="Center" />
 
             <Label
                 Text="Ei ladeteneste frå Firda Seafood Group"
-                TextColor="White"
-                FontSize="14"
-                FontAttributes="Bold"
+                TextColor="Grey"
+                FontSize="12"
+                Margin="0,0,0,30"
+                FontAttributes="None"
                 HorizontalOptions="Center" />
 
-            <!-- Thank you message? -->
-            <Label
-                Text="Takk for at du tenkjer grønt – for framtida og fjorden vår."
-                TextColor="{StaticResource FirdaAccentLightBlue}"
-                FontSize="14"
-                FontAttributes="Italic"
-                HorizontalOptions="Center"
-                Margin="0,0,0,30" />
-
             <!-- Login fields -->
-            <Frame BackgroundColor="#1C2251" Padding="20" CornerRadius="10" BorderColor="Transparent" WidthRequest="300">
-                <VerticalStackLayout Spacing="20">
+            <Border BackgroundColor="#1C2251" Padding="0,0,0,0" StrokeShape="RoundRectangle 10,10,10,10" StrokeThickness="0">
+                <VerticalStackLayout Spacing="10">
                     <Entry
                         x:Name="EmailEntry"
                         Placeholder="E-post"
                         Keyboard="Email"
                         TextColor="White"
-                        PlaceholderColor="LightGray"
-                        BackgroundColor="Transparent" />
+                        PlaceholderColor="{StaticResource FirdaAccentLightBlue}"
+                        BackgroundColor="#18417F" />
 
                     <Entry
                         x:Name="PasswordEntry"
                         Placeholder="Passord"
                         IsPassword="True"
                         TextColor="White"
-                        PlaceholderColor="LightGray"
-                        BackgroundColor="Transparent"/>
+                        PlaceholderColor="{StaticResource FirdaAccentLightBlue}"
+                        BackgroundColor="#18417F" />
 
                     <Button
                         x:Name="LoginButton"
@@ -80,7 +73,7 @@
                         BackgroundColor="Transparent"
                         TextColor="{StaticResource FirdaAccentLightBlue}"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <Label
                 x:Name="StatusLabel"
@@ -91,7 +84,8 @@
             <!-- Copyright info -->
             <Label
                 Text="© Firda Seafood Group"
-                TextColor="White"
+                BackgroundColor="#1c2251"
+                TextColor="LightGray"
                 FontSize="12"
                 HorizontalOptions="Center"
                 VerticalOptions="End"

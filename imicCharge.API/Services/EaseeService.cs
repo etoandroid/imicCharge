@@ -1,13 +1,32 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using imicCharge.API.Models;
+using System.Text.Json.Serialization;
 
 namespace imicCharge.API.Services;
 
-public class ChargeSession
+/// <summary>
+/// Represents live data from an ongoing charging session.
+/// </summary>
+public class OngoingSession
 {
-    public double Kwh { get; set; }
+    [JsonPropertyName("sessionEnergy")]
+    public double SessionEnergy { get; set; } // Represents the energy consumed in kWh.
+
+    [JsonPropertyName("costIncludingVat")]
+    public double? CostIncludingVat { get; set; }
+}
+
+/// <summary>
+/// Represents a single Easee charger.
+/// </summary>
+public class EaseeCharger
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
 }
 
 /// <summary>
@@ -15,16 +34,15 @@ public class ChargeSession
 /// </summary>
 public class EaseeService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private string? _accessToken;
     private DateTime _tokenExpiryTime;
 
-    public EaseeService(HttpClient httpClient, IConfiguration configuration)
+    public EaseeService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configuration = configuration;
-        _httpClient.BaseAddress = new Uri("https://api.easee.com/");
     }
 
     /// <summary>
@@ -32,22 +50,57 @@ public class EaseeService
     /// </summary>
     private async Task AuthenticateIfNeededAsync()
     {
-        if (string.IsNullOrEmpty(_accessToken) || DateTime.UtcNow >= _tokenExpiryTime)
+        if (!string.IsNullOrEmpty(_accessToken) && DateTime.UtcNow < _tokenExpiryTime)
         {
-            var easeeSettings = _configuration.GetSection("EaseeSettings");
-            var credentials = new { userName = easeeSettings["Username"], password = easeeSettings["Password"] };
-            var content = new StringContent(JsonSerializer.Serialize(credentials), Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync("api/accounts/token", content);
-            response.EnsureSuccessStatusCode();
-
-            var responseBody = await response.Content.ReadAsStringAsync();
-            var tokenResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-
-            _accessToken = tokenResponse.GetProperty("accessToken").GetString();
-            var expiresIn = tokenResponse.GetProperty("expiresIn").GetInt32();
-            _tokenExpiryTime = DateTime.UtcNow.AddSeconds(expiresIn - 60); // Subtract a minute for safety
+            return; // Token is still valid
         }
+
+        var easeeSettings = _configuration.GetSection("EaseeSettings");
+        var username = easeeSettings["Username"];
+        var password = easeeSettings["Password"];
+
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+        {
+            throw new InvalidOperationException("Easee username or password is not configured in secrets.");
+        }
+
+        // Create a dedicated client for authentication from the factory.
+        var authClient = _httpClientFactory.CreateClient("easee-auth");
+
+        var credentials = new { userName = username, password };
+        var content = new StringContent(JsonSerializer.Serialize(credentials), Encoding.UTF8, "application/json");
+
+        var response = await authClient.PostAsync("api/accounts/login", content);
+        response.EnsureSuccessStatusCode();
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var tokenResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
+
+        _accessToken = tokenResponse.GetProperty("accessToken").GetString();
+        var expiresIn = tokenResponse.GetProperty("expiresIn").GetInt32();
+        _tokenExpiryTime = DateTime.UtcNow.AddSeconds(expiresIn - 60); // Subtract 60 seconds for safety margin
+    }
+
+    /// <summary>
+    /// Creates and configures a new HttpClient for standard API calls.
+    /// This is a helper method to avoid code repetition.
+    /// </summary>
+    private HttpClient CreateApiClient()
+    {
+        var client = _httpClientFactory.CreateClient("easee-api");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        return client;
+    }
+
+    /// <summary>
+    /// Retrieves a list of all chargers available to the user.
+    /// </summary>
+    public async Task<IEnumerable<EaseeCharger>?> GetChargersAsync()
+    {
+        await AuthenticateIfNeededAsync();
+        var client = CreateApiClient();
+
+        return await client.GetFromJsonAsync<List<EaseeCharger>>("api/chargers");
     }
 
     /// <summary>
@@ -58,9 +111,8 @@ public class EaseeService
     public async Task<bool> StartChargingAsync(string chargerId)
     {
         await AuthenticateIfNeededAsync();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-        var response = await _httpClient.PostAsync($"api/chargers/{chargerId}/commands/start_charging", null);
-
+        var client = CreateApiClient();
+        var response = await client.PostAsync($"api/chargers/{chargerId}/commands/start_charging", null);
         return response.IsSuccessStatusCode;
     }
 
@@ -72,37 +124,32 @@ public class EaseeService
     public async Task<bool> StopChargingAsync(string chargerId)
     {
         await AuthenticateIfNeededAsync();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-        var response = await _httpClient.PostAsync($"api/chargers/{chargerId}/commands/stop_charging", null);
-
+        var client = CreateApiClient();
+        var response = await client.PostAsync($"api/chargers/{chargerId}/commands/stop_charging", null);
         return response.IsSuccessStatusCode;
     }
 
     /// <summary>
-    /// Retrieves the latest charging session details for a specific charger.
+    /// Retrieves the state of an ongoing charging session.
     /// </summary>
     /// <param name="chargerId">The ID of the charger.</param>
-    /// <returns>A ChargeSession object with details about the last session, or null if not found.</returns>
-    public async Task<ChargeSession?> GetLatestChargingSessionAsync(string chargerId)
+    /// <returns>An OngoingSession object with live data, or null if not found.</returns>
+    public async Task<OngoingSession?> GetOngoingSessionAsync(string chargerId)
     {
         await AuthenticateIfNeededAsync();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        var client = CreateApiClient();
 
-        var response = await _httpClient.GetAsync($"api/chargers/{chargerId}/sessions/latest");
-        if (!response.IsSuccessStatusCode)
-        {
-            return null;
-        }
+        return await client.GetFromJsonAsync<OngoingSession>($"api/chargers/{chargerId}/sessions/ongoing");
+    }
 
-        var responseBody = await response.Content.ReadAsStringAsync();
-        var sessionElement = JsonSerializer.Deserialize<JsonElement>(responseBody);
-
-        // Hentar ut 'kwh' frå responsen. Easee API returnerer dette som 'totalKiloWattHours'
-        if (sessionElement.TryGetProperty("totalKiloWattHours", out var kwhElement))
-        {
-            return new ChargeSession { Kwh = kwhElement.GetDouble() };
-        }
-
-        return null;
+    /// <summary>
+    /// Gets the real-time state of a specific charger.
+    /// </summary>
+    /// <returns>A JsonElement representing the charger's state, or null if not found.</returns>
+    public async Task<JsonElement?> GetChargerStateAsync(string chargerId)
+    {
+        await AuthenticateIfNeededAsync();
+        var client = CreateApiClient();
+        return await client.GetFromJsonAsync<JsonElement>($"api/chargers/{chargerId}/state");
     }
 }
