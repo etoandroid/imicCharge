@@ -15,8 +15,8 @@
             <!-- Logo -->
             <Image
                 Source="logo_firda.png"
-                HeightRequest="150"
-                Margin="0,40,0,10"
+                HeightRequest="100"
+                Margin="0,20,0,20"
                 SemanticProperties.Description="Firda Seafood logo" />
 
             <!-- App title -->
@@ -27,11 +27,18 @@
                 FontAttributes="Bold"
                 HorizontalOptions="Center" />
 
-            <!-- Slagord -->
             <Label
-                Text="Takk for at du ladar grønt – for fjorden vår."
+                Text="Ei ladeteneste frå Firda Seafood Group"
+                TextColor="White"
+                FontSize="14"
+                FontAttributes="Bold"
+                HorizontalOptions="Center" />
+
+            <!-- Thank you message? -->
+            <Label
+                Text="Takk for at du tenkjer grønt – for framtida og fjorden vår."
                 TextColor="{StaticResource FirdaAccentLightBlue}"
-                FontSize="16"
+                FontSize="14"
                 FontAttributes="Italic"
                 HorizontalOptions="Center"
                 Margin="0,0,0,30" />

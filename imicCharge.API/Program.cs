@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Stripe;
+using Stripe.Checkout;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +38,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddScoped<PaymentIntentService>();
+builder.Services.AddScoped<SessionService>(); 
 builder.Services.AddScoped<UserManager<ApplicationUser>>();
 builder.Services.AddHttpClient<imicCharge.API.Services.EaseeService>();
 builder.Services.AddScoped<imicCharge.API.Services.EaseeService>();

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using Stripe.Checkout;
 
 namespace imicCharge.API.Controllers
 {
@@ -22,7 +23,7 @@ namespace imicCharge.API.Controllers
             var webhookSecret = configuration["StripeSettings:WebhookSecret"];
             if (string.IsNullOrEmpty(webhookSecret))
             {
-                logger.LogError("Stripe Webhook Secret is not configured.");
+                logger.LogError("[WEBHOOK] Stripe Webhook Secret is NOT CONFIGURED.");
                 return StatusCode(500, "Internal server configuration error.");
             }
 
@@ -31,61 +32,74 @@ namespace imicCharge.API.Controllers
                 var stripeEvent = EventUtility.ConstructEvent(json,
                     Request.Headers["Stripe-Signature"], webhookSecret);
 
-                logger.LogInformation("Stripe webhook event received: {EventType}", stripeEvent.Type);
+                logger.LogInformation("[WEBHOOK] Event received: {EventType}", stripeEvent.Type);
 
-                if (stripeEvent.Type == "payment_intent.succeeded")
+                // KORRIGERT: Brukar den faktiske streng-verdien for hendinga
+                if (stripeEvent.Type == "checkout.session.completed")
                 {
-                    if (stripeEvent.Data.Object is not PaymentIntent paymentIntent)
+                    if (stripeEvent.Data.Object is not Session session)
                     {
-                        logger.LogError("Could not deserialize PaymentIntent object from Stripe event.");
+                        logger.LogError("[WEBHOOK] CRITICAL: Could not deserialize Session object from event.");
                         return BadRequest();
                     }
 
-                    if (paymentIntent.Metadata.TryGetValue("user_id", out var userId))
-                    {
-                        var user = await userManager.FindByIdAsync(userId);
-                        if (user != null)
-                        {
-                            var amountToAdd = (decimal)paymentIntent.Amount / 100;
-                            user.AccountBalance += amountToAdd;
-                            var result = await userManager.UpdateAsync(user);
+                    logger.LogInformation("[WEBHOOK] Processing CheckoutSessionCompleted for session ID: {SessionId}", session.Id);
 
-                            if (result.Succeeded)
-                            {
-                                logger.LogInformation("Successfully updated balance for user {UserId} with {Amount}", userId, amountToAdd);
-                            }
-                            else
-                            {
-                                logger.LogError("Failed to update balance for user {UserId}. Errors: {Errors}", userId, string.Join(", ", result.Errors.Select(e => e.Description)));
-                            }
-                        }
-                        else
-                        {
-                            logger.LogWarning("Webhook received for non-existent user ID: {UserId}", userId);
-                        }
+                    if (!session.Metadata.TryGetValue("user_id", out var userId) || string.IsNullOrEmpty(userId))
+                    {
+                        logger.LogWarning("[WEBHOOK] WARNING: Session {SessionId} is missing 'user_id' in metadata.", session.Id);
+                        return Ok();
+                    }
+
+                    logger.LogInformation("[WEBHOOK] Found user_id '{UserId}' in metadata. Attempting to find user.", userId);
+                    var user = await userManager.FindByIdAsync(userId);
+
+                    if (user == null)
+                    {
+                        logger.LogWarning("[WEBHOOK] WARNING: User with ID '{UserId}' not found in database.", userId);
+                        return Ok();
+                    }
+
+                    if (!session.AmountTotal.HasValue)
+                    {
+                        logger.LogWarning("[WEBHOOK] WARNING: Session {SessionId} has no AmountTotal value.", session.Id);
+                        return Ok();
+                    }
+
+                    var amountToAdd = (decimal)session.AmountTotal.Value / 100;
+                    logger.LogInformation("[WEBHOOK] User '{UserId}' found. Current balance: {Balance}. Amount to add: {Amount}", userId, user.AccountBalance, amountToAdd);
+
+                    user.AccountBalance += amountToAdd;
+                    var result = await userManager.UpdateAsync(user);
+
+                    if (result.Succeeded)
+                    {
+                        logger.LogInformation("[WEBHOOK] SUCCESS: Successfully updated balance for user {UserId}. New balance: {NewBalance}", userId, user.AccountBalance);
                     }
                     else
                     {
-                        logger.LogWarning("Webhook received for PaymentIntent {Id} without a user_id in metadata.", paymentIntent.Id);
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        logger.LogError("[WEBHOOK] FAILED to update balance for user {UserId}. Errors: {Errors}", userId, errors);
                     }
                 }
                 else
                 {
-                    logger.LogInformation("Unhandled Stripe event type: {EventType}", stripeEvent.Type);
+                    logger.LogInformation("[WEBHOOK] Unhandled event type: {EventType}", stripeEvent.Type);
                 }
 
                 return Ok();
             }
             catch (StripeException e)
             {
-                logger.LogError(e, "Error processing Stripe webhook: Invalid signature or payload.");
+                logger.LogError(e, "[WEBHOOK] Stripe signature verification failed. Check your WebhookSecret.");
                 return BadRequest();
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An unexpected error occurred in the Stripe webhook handler.");
+                logger.LogError(ex, "[WEBHOOK] An unexpected error occurred.");
                 return StatusCode(500);
             }
         }
     }
 }
+

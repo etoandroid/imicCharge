@@ -40,5 +40,23 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0-preview.5.24306.7" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Compile Update="TopUpPage.xaml.cs">
+	    <DependentUpon>TopUpPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="PaymentPage.xaml.cs">
+	    <DependentUpon>PaymentPage.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiXaml Update="PaymentPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="TopUpPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	</ItemGroup>
+
 </Project>
 

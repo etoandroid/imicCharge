@@ -5,68 +5,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using Stripe.Checkout;
 
 namespace imicCharge.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class PaymentController(
-        PaymentIntentService paymentIntentService,
+        SessionService sessionService,
         UserManager<ApplicationUser> userManager,
         ILogger<PaymentController> logger) : ControllerBase
     {
-        /// <summary>
-        /// Creates a new Stripe Payment Intent for the authenticated user.
-        /// </summary>
-        /// <param name="request">A request object containing the amount to be paid.</param>
-        /// <returns>A client secret that the frontend can use to confirm the payment.</returns>
-        [Authorize]
-        [HttpPost("create-payment-intent")]
-        public async Task<IActionResult> CreatePaymentIntent([FromBody] CreatePaymentRequest request)
-        {
-            try
-            {
-                var userId = User.GetUserId();
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return Unauthorized("Kunne ikkje identifisere brukar.");
-                }
-
-                var user = await userManager.FindByIdAsync(userId);
-                if (user == null)
-                {
-                    return Unauthorized("Brukar ikkje funnen.");
-                }
-
-                var options = new PaymentIntentCreateOptions
-                {
-                    Amount = (long)(request.Amount * 100),
-                    Currency = "nok",
-                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
-                    {
-                        Enabled = true,
-                    },
-                    Metadata = new Dictionary<string, string>
-                    {
-                        { "user_id", user.Id }
-                    }
-                };
-
-                var paymentIntent = await paymentIntentService.CreateAsync(options);
-                return Ok(new { clientSecret = paymentIntent.ClientSecret });
-            }
-            catch (StripeException e)
-            {
-                logger.LogError(e, "A Stripe error occurred: {StripeError}", e.StripeError.Message);
-                return BadRequest(new { error = e.StripeError.Message });
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An unexpected error occurred in CreatePaymentIntent.");
-                return StatusCode(500, new { error = "Ein intern feil oppstod under førebuing av betalinga." });
-            }
-        }
-
         /// <summary>
         /// Retrieves the current account balance for the authenticated user.
         /// </summary>
@@ -95,6 +44,61 @@ namespace imicCharge.API.Controllers
             {
                 logger.LogError(ex, "An unexpected error occurred in GetAccountBalance.");
                 return StatusCode(500, new { error = "Ein intern feil oppstod ved henting av saldo." });
+            }
+        }
+
+        /// <summary>
+        /// Creates a new Stripe Checkout Session for the authenticated user.
+        /// </summary>
+        /// <returns>A URL to the Stripe-hosted checkout page.</returns>
+        [Authorize]
+        [HttpPost("create-checkout-session")]
+        public async Task<IActionResult> CreateCheckoutSession([FromBody] CreatePaymentRequest request)
+        {
+            var userId = User.GetUserId();
+            var user = await userManager.FindByIdAsync(userId!);
+            if (user == null)
+            {
+                return Unauthorized("Brukar ikkje funnen.");
+            }
+
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card", "mobilepay" },
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new()
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            UnitAmount = (long)(request.Amount * 100),
+                            Currency = "nok",
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = "Påfylling av ladekonto",
+                            },
+                        },
+                        Quantity = 1,
+                    },
+                },
+                Mode = "payment",
+                SuccessUrl = "https://imiccharge.app/payment_success",
+                CancelUrl = "https://imiccharge.app/payment_cancel",
+                Metadata = new Dictionary<string, string>
+                {
+                    { "user_id", user.Id }
+                }
+            };
+
+            try
+            {
+                var session = await sessionService.CreateAsync(options);
+                return Ok(new { url = session.Url });
+            }
+            catch (StripeException e)
+            {
+                logger.LogError(e, "Stripe error: {StripeError}", e.StripeError.Message);
+                return BadRequest(new { error = e.StripeError.Message });
             }
         }
     }
