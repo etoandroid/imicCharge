@@ -32,10 +32,10 @@
                 <Grid ColumnDefinitions="*,*" RowDefinitions="Auto, Auto" RowSpacing="15" ColumnSpacing="10">
 
                     <Label Grid.Row="0" Grid.Column="0" Text="Forbruk (kWt)" TextColor="LightGray" HorizontalOptions="Center"/>
-                    <Label x:Name="KwhLabel" Grid.Row="1" Grid.Column="0" Text="0,00" FontSize="30" TextColor="White" HorizontalOptions="Center"/>
+                    <Label x:Name="KwhLabel" Grid.Row="1" Grid.Column="0" Text="0,00" FontSize="21" TextColor="White" HorizontalOptions="Center"/>
 
                     <Label Grid.Row="0" Grid.Column="1" Text="Gjenståande Saldo" TextColor="LightGray" HorizontalOptions="Center"/>
-                    <Label x:Name="BalanceLabel" Grid.Row="1" Grid.Column="1" Text="--- kr" FontSize="30" TextColor="White" HorizontalOptions="Center"/>
+                    <Label x:Name="BalanceLabel" Grid.Row="1" Grid.Column="1" Text="--- kr" FontSize="21" TextColor="White" HorizontalOptions="Center"/>
                 </Grid>
             </Border>
         </VerticalStackLayout>

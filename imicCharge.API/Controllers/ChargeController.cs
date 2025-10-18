@@ -11,11 +11,23 @@ namespace imicCharge.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ChargeController(
-        UserManager<ApplicationUser> userManager,
-        ILogger<ChargeController> logger,
-        EaseeService easeeService) : ControllerBase
+    public class ChargeController : ControllerBase // Remove the primary constructor syntax if you had it
     {
+        // Define fields for dependencies ---
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<ChargeController> _logger;
+        private readonly IEaseeService _easeeService; // Use the interface type
+
+        public ChargeController(
+            UserManager<ApplicationUser> userManager,
+            ILogger<ChargeController> logger,
+            IEaseeService easeeService)
+        {
+            _userManager = userManager;
+            _logger = logger;
+            _easeeService = easeeService;
+        }
+
         /// <summary>
         /// Initiates a charging session for the authenticated user on a specified charger.
         /// </summary>
@@ -28,15 +40,13 @@ namespace imicCharge.API.Controllers
                 return NotFound("User not found.");
             }
 
-            // Business Logic: Check account balance before starting
             if (user.AccountBalance <= 0)
             {
-                return BadRequest(new { error = "Du har for lita saldo. Fyll på kontoen din før du startar lading." });
+                return BadRequest(new { error = "Du har for låg saldo. Fyll på kontoen din før du startar lading." });
             }
 
-            logger.LogInformation("User {UserId} starting charge on {ChargerId}. Balance: {Balance}", user.Id, request.ChargerId, user.AccountBalance);
-
-            var success = await easeeService.StartChargingAsync(request.ChargerId);
+            _logger.LogInformation("User {UserId} starting charge on {ChargerId}. Balance: {Balance}", user.Id, request.ChargerId, user.AccountBalance);
+            var success = await _easeeService.StartChargingAsync(request.ChargerId); // Uses the interface field
 
             if (success)
             {
@@ -58,31 +68,30 @@ namespace imicCharge.API.Controllers
                 return NotFound("User not found.");
             }
 
-            logger.LogInformation("User {UserId} stopping charge on {ChargerId}", user.Id, request.ChargerId);
+            _logger.LogInformation("User {UserId} stopping charge on {ChargerId}", user.Id, request.ChargerId);
 
-            // Get the final session details BEFORE stopping the charge
-            var session = await easeeService.GetOngoingSessionAsync(request.ChargerId);
+            var session = await _easeeService.GetOngoingSessionAsync(request.ChargerId); // Uses the interface field
             if (session == null)
             {
-                logger.LogWarning("Could not retrieve ongoing charging session for charger {ChargerId} before stopping.", request.ChargerId);
-                // We can still try to stop the charger
+                _logger.LogWarning("Could not retrieve ongoing charging session for charger {ChargerId} before stopping.", request.ChargerId);
             }
 
-            var success = await easeeService.StopChargingAsync(request.ChargerId);
+            var success = await _easeeService.StopChargingAsync(request.ChargerId); // Uses the interface field
 
             if (!success)
             {
                 return StatusCode(500, new { error = $"Klarte ikkje å stoppe lading for ladar {request.ChargerId}." });
             }
 
-            // If we successfully fetched the session, calculate and deduct the final cost
             if (session?.CostIncludingVat != null)
             {
                 var cost = (decimal)session.CostIncludingVat.Value;
+                // Prevent negative cost issues from mock timing
+                if (cost < 0) cost = 0;
                 user.AccountBalance -= cost;
-                await userManager.UpdateAsync(user);
+                await _userManager.UpdateAsync(user);
 
-                logger.LogInformation("Charged user {UserId} for {Kwh} kWh. Cost: {Cost}. New balance: {Balance}", user.Id, session.SessionEnergy, cost, user.AccountBalance);
+                _logger.LogInformation("Charged user {UserId} for {Kwh} kWh. Cost: {Cost}. New balance: {Balance}", user.Id, session.SessionEnergy, cost, user.AccountBalance);
 
                 return Ok(new
                 {
@@ -90,8 +99,6 @@ namespace imicCharge.API.Controllers
                     newBalance = user.AccountBalance
                 });
             }
-
-            // Fallback message if session details could not be retrieved
             return Ok(new { message = "Lading stoppa. Saldoen din vil bli oppdatert om kort tid." });
         }
 
@@ -101,7 +108,7 @@ namespace imicCharge.API.Controllers
         [HttpGet("chargers")]
         public async Task<IActionResult> GetChargers()
         {
-            var chargers = await easeeService.GetChargersAsync();
+            var chargers = await _easeeService.GetChargersAsync(); // Uses the interface field
             if (chargers == null)
             {
                 return NotFound("Kunne ikkje hente ladarar.");
@@ -121,19 +128,15 @@ namespace imicCharge.API.Controllers
                 return Unauthorized("User not found.");
             }
 
-            var session = await easeeService.GetOngoingSessionAsync(chargerId);
-            if (session == null)
-            {
-                return NotFound("Could not retrieve charging status.");
-            }
+            var session = await _easeeService.GetOngoingSessionAsync(chargerId); // Uses the interface field
+            var chargerState = await _easeeService.GetChargerStateAsync(chargerId); // Uses the interface field
 
-            // Use the accurate cost directly from the Easee API
-            var cost = (decimal)(session.CostIncludingVat ?? 0);
-            var remainingBalance = user.AccountBalance - cost;
-
-            // Get live power usage from the charger state endpoint
-            var chargerState = await easeeService.GetChargerStateAsync(chargerId);
-            var powerUsage = 0.0;
+            double sessionEnergy = session?.SessionEnergy ?? 0.0;
+            decimal cost = (decimal)(session?.CostIncludingVat ?? 0.0);
+            // Prevent negative cost issues from mock timing
+            if (cost < 0) cost = 0;
+            decimal remainingBalance = user.AccountBalance - cost;
+            double powerUsage = 0.0;
             if (chargerState.HasValue && chargerState.Value.TryGetProperty("chargerPow", out var powerElement))
             {
                 powerUsage = powerElement.GetDouble();
@@ -141,7 +144,7 @@ namespace imicCharge.API.Controllers
 
             return Ok(new
             {
-                Kwh = session.SessionEnergy,
+                Kwh = sessionEnergy,
                 RemainingBalance = remainingBalance,
                 PowerUsage = powerUsage
             });
@@ -157,8 +160,7 @@ namespace imicCharge.API.Controllers
             {
                 return null;
             }
-            return await userManager.FindByIdAsync(userId);
+            return await _userManager.FindByIdAsync(userId);
         }
     }
 }
-

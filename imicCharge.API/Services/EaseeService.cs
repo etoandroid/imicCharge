@@ -8,13 +8,52 @@ namespace imicCharge.API.Services;
 /// <summary>
 /// Represents live data from an ongoing charging session.
 /// </summary>
+/// <summary>
+/// Represents live data from an ongoing charging session based on Easee API.
+/// </summary>
 public class OngoingSession
 {
+    [JsonPropertyName("chargerId")]
+    public string? ChargerId { get; set; }
+
     [JsonPropertyName("sessionEnergy")]
-    public double SessionEnergy { get; set; } // Represents the energy consumed in kWh.
+    public double SessionEnergy { get; set; } // kWh
+
+    [JsonPropertyName("sessionStart")]
+    public DateTimeOffset? SessionStart { get; set; } // Use DateTimeOffset for time zone handling
+
+    [JsonPropertyName("sessionEnd")]
+    public DateTimeOffset? SessionEnd { get; set; }
+
+    [JsonPropertyName("sessionId")]
+    public long? SessionId { get; set; } // Use long for potentially large IDs
+
+    [JsonPropertyName("chargeDurationInSeconds")]
+    public int? ChargeDurationInSeconds { get; set; }
+
+    [JsonPropertyName("firstEnergyTransferPeriodStart")]
+    public DateTimeOffset? FirstEnergyTransferPeriodStart { get; set; }
+
+    [JsonPropertyName("lastEnergyTransferPeriodEnd")]
+    public DateTimeOffset? LastEnergyTransferPeriodEnd { get; set; }
+
+    [JsonPropertyName("pricePrKwhIncludingVat")]
+    public double? PricePrKwhIncludingVat { get; set; }
+
+    [JsonPropertyName("pricePerKwhExcludingVat")]
+    public double? PricePerKwhExcludingVat { get; set; }
+
+    [JsonPropertyName("vatPercentage")]
+    public double? VatPercentage { get; set; }
+
+    [JsonPropertyName("currencyId")]
+    public string? CurrencyId { get; set; }
 
     [JsonPropertyName("costIncludingVat")]
     public double? CostIncludingVat { get; set; }
+
+    [JsonPropertyName("costExcludingVat")]
+    public double? CostExcludingVat { get; set; }
 }
 
 /// <summary>
@@ -32,7 +71,7 @@ public class EaseeCharger
 /// <summary>
 /// Handles all communication with the Easee API for charging operations.
 /// </summary>
-public class EaseeService
+public class EaseeService : IEaseeService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
@@ -139,7 +178,32 @@ public class EaseeService
         await AuthenticateIfNeededAsync();
         var client = CreateApiClient();
 
-        return await client.GetFromJsonAsync<OngoingSession>($"api/chargers/{chargerId}/sessions/ongoing");
+        try
+        {
+            var response = await client.GetAsync($"api/chargers/{chargerId}/sessions/ongoing");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<OngoingSession>();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // 404 error: Charging hasn't started yet or session doesn't exist? Return null.
+                return null;
+            }
+            else
+            {
+                // Throw and exception for other errors to indicate a real problem
+                response.EnsureSuccessStatusCode();
+                return null;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            // TODO: Consider more specific/proper logging based on ex.StatusCode if available.
+            Console.WriteLine($"Error fetching ongoing session: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>

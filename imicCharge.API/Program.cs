@@ -44,7 +44,6 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddScoped<Stripe.Checkout.SessionService>();
 
 // Configure named HttpClients for the two different Easee base URLs.
-// This is the correct pattern for handling services that call multiple external APIs.
 builder.Services.AddHttpClient("easee-auth", client =>
 {
     var authUrl = builder.Configuration["EaseeSettings:AuthBaseUrl"];
@@ -63,6 +62,23 @@ builder.Services.AddHttpClient("easee-api", client =>
 
 // Register the EaseeService, which will use the IHttpClientFactory to get the correct client.
 builder.Services.AddScoped<EaseeService>();
+
+// TODO: Remove MOCK service before final production deployment:
+builder.Services.AddScoped<MockChargingService>(); // Add registration for the mock service
+bool useMock = builder.Configuration.GetValue<bool>("UseMockEasee", false);
+
+if (useMock)
+{
+    Console.WriteLine("INFO: Using MOCK Charging Service (Real GetChargers)."); // Optional: Logging
+    // When IEaseeService is requested, provide an instance of MockChargingService
+    builder.Services.AddScoped<IEaseeService, MockChargingService>();
+}
+else
+{
+    Console.WriteLine("INFO: Using REAL Easee Service."); // Optional: Logging
+    // When IEaseeService is requested, provide an instance of EaseeService
+    builder.Services.AddScoped<IEaseeService, EaseeService>();
+}
 
 // Configure Stripe API key from configuration (appsettings.json or user secrets).
 var stripeSecretKey = builder.Configuration["StripeSettings:SecretKey"];
