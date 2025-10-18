@@ -10,58 +10,90 @@ public partial class LoginPage : ContentPage
     {
         InitializeComponent();
         _apiService = new ApiService();
+
+        // Register the specific CustomAlert instance from this page.
+        PopupService.Register(AlertView);
+        LoadingService.Register(BusyIndicator);
     }
 
     private async void OnLoginClicked(object? sender, EventArgs e)
     {
-        StatusLabel.Text = "Loggar inn...";
         var email = EmailEntry.Text;
         var password = PasswordEntry.Text;
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            StatusLabel.Text = "E-post og passord kan ikkje vere tomme.";
+            await PopupService.ShowAlertAsync("Feil", "E-post og passord kan ikkje vere tomme.");
             return;
         }
 
-        var loginResponse = await _apiService.LoginAsync(email, password);
+        await LoadingService.ShowAsync("Loggar inn..");
 
-        if (loginResponse?.AccessToken != null)
+        try
         {
-            await SecureStorage.SetAsync("access_token", loginResponse.AccessToken);
+            var loginResponse = await _apiService.LoginAsync(email, password);
 
-            if (Application.Current?.Windows[0] != null)
+            if (loginResponse?.AccessToken != null)
             {
-                Application.Current.Windows[0].Page = new AppShell();
+                await SecureStorage.SetAsync("access_token", loginResponse.AccessToken);
+                await SecureStorage.SetAsync("user_email", email);
+
+                if (Application.Current?.Windows[0] != null)
+                {
+                    Application.Current.Windows[0].Page = new AppShell();
+                }
+            }
+            else
+            {
+                await LoadingService.HideAsync();
+                await PopupService.ShowAlertAsync("Innlogging feila", "Sjekk at e-post og passord er korrekt.");
             }
         }
-        else
+        catch (Exception)
         {
-            StatusLabel.Text = "Innlogging feila. Sjekk e-post og passord.";
+            await LoadingService.HideAsync();
+            await PopupService.ShowAlertAsync("Feil", "Ein feil oppstod under innlogging. Prøv igjen.");
         }
     }
 
     private async void OnRegisterClicked(object? sender, EventArgs e)
     {
-        StatusLabel.Text = "Registrerer...";
         var email = EmailEntry.Text;
         var password = PasswordEntry.Text;
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            StatusLabel.Text = "E-post og passord kan ikkje vere tomme.";
+            await PopupService.ShowAlertAsync("Feil", "E-post og passord kan ikkje vere tomme.");
             return;
         }
 
-        bool success = await _apiService.RegisterAsync(email, password);
+        await LoadingService.ShowAsync("Registrerer..");
 
-        if (success)
+        try
         {
-            StatusLabel.Text = "Brukar registrert. Ver venleg og logg inn.";
+            bool success = await _apiService.RegisterAsync(email, password);
+
+            if (success)
+            {
+                await LoadingService.HideAsync();
+                await PopupService.ShowAlertAsync("Suksess", "Brukaren din er no registrert. Ver venleg og logg inn.");
+            }
+            else
+            {
+                await LoadingService.HideAsync();
+                await PopupService.ShowAlertAsync("Registrering feila", "E-postadressa er kanskje allereie i bruk. Prøv ei anna.");
+            }
         }
-        else
+        catch (Exception)
         {
-            StatusLabel.Text = "Registrering feila. Prøv ei anna e-postadresse.";
+            await LoadingService.HideAsync();
+            await PopupService.ShowAlertAsync("Feil", "Ein feil oppstod under registrering. Prøv igjen.");
         }
     }
+
+    private void OnLoginTriggered(object? sender, EventArgs e)
+    {
+        OnLoginClicked(sender, e);
+    }
+
 }

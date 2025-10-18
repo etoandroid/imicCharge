@@ -1,4 +1,6 @@
-﻿namespace imicCharge.APP;
+﻿using imicCharge.APP.Services; // You can remove this using statement if it's not used elsewhere
+
+namespace imicCharge.APP;
 
 public partial class AppShell : Shell
 {
@@ -11,5 +13,4 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(PaymentPage), typeof(PaymentPage));
         Routing.RegisterRoute(nameof(ChargingPage), typeof(ChargingPage));
     }
-
 }

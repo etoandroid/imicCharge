@@ -18,6 +18,12 @@ public partial class MainPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        PopupService.Register(AlertView);
+        
+        // Set the user's email address in the UI
+        AccountName.Text = await SecureStorage.GetAsync("user_email");
+
         await UpdateBalanceDisplay();
         await LoadChargers();
     }
@@ -27,47 +33,63 @@ public partial class MainPage : ContentPage
         var chargers = await _apiService.GetChargersAsync();
         if (chargers != null)
         {
-            ChargersView.ItemsSource = chargers;
+            // Set ItemsSource for the Picker
+            ChargerPicker.ItemsSource = chargers;
         }
         else
         {
-            ChargeStatusLabel.Text = "Kunne ikkje hente ladarar.";
+            // Using the PopupService for consistency
+            await PopupService.ShowAlertAsync("Feil", "Kunne ikkje hente ladarar.");
         }
     }
+
+    private decimal _currentBalance = 0;
 
     private async Task UpdateBalanceDisplay()
     {
         var balance = await _apiService.GetAccountBalanceAsync();
         if (balance.HasValue)
         {
-            BalanceLabel.Text = $"{balance.Value:C}"; // Format as currency ("kr 123,45")
-        }
+            _currentBalance = balance.Value; // Store the balance in private field
+            BalanceLabel.Text = $"{_currentBalance:C}"; // Format as currency/NOK ("kr 123,45")
+    }
         else
         {
             BalanceLabel.Text = "Feil";
-            // TODO: Consider showing improved error message or redirect user to login page
         }
     }
 
-    private async void OnLogoutClicked(object? sender, EventArgs e)
+    private void OnLogoutClicked(object? sender, EventArgs e)
     {
         SecureStorage.Remove("access_token");
-        await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+        if (Application.Current?.Windows.FirstOrDefault() is Window window)
+        {
+            window.Page = new LoginPage();
+        }
     }
 
     private async void OnStartChargeClicked(object? sender, EventArgs e)
     {
-        var selectedCharger = ChargersView.SelectedItem as EaseeCharger;
+        // Get selected item from the Picker
+        var selectedCharger = ChargerPicker.SelectedItem as EaseeCharger;
 
+        // Validation 1: Check if a charger is selected
         if (selectedCharger == null)
         {
-            ChargeStatusLabel.Text = "Du må velje ein ladar frå lista.";
+            await PopupService.ShowAlertAsync("Ingen ladar vald", "Du må velje ein ladar frå lista.");
+            return;
+        }
+
+        // Validation 2: Check if balance is sufficient
+        if (_currentBalance < 20)
+        {
+            await PopupService.ShowAlertAsync("For lita saldo", "Saldoen din er under kr 20. Fyll på kontoen før du startar lading.");
             return;
         }
 
         if (string.IsNullOrEmpty(selectedCharger.Id))
         {
-            ChargeStatusLabel.Text = "Den valde ladaren har ingen gyldig ID.";
+            await PopupService.ShowAlertAsync("Feil", "Den valde ladaren har ingen gyldig ID.");
             return;
         }
 
@@ -76,11 +98,14 @@ public partial class MainPage : ContentPage
 
         if (success)
         {
+            // Clear status text on success before navigating
+            ChargeStatusLabel.Text = string.Empty;
             await Shell.Current.GoToAsync($"{nameof(ChargingPage)}?ChargerId={selectedCharger.Id}");
         }
         else
         {
-            ChargeStatusLabel.Text = "Kunne ikkje starte lading.";
+            ChargeStatusLabel.Text = string.Empty; // Clear status text
+            await PopupService.ShowAlertAsync("Feil", "Kunne ikkje starte lading. Sjekk saldo og prøv igjen.");
         }
     }
 
@@ -88,5 +113,4 @@ public partial class MainPage : ContentPage
     {
         await Shell.Current.GoToAsync(nameof(TopUpPage));
     }
-
 }

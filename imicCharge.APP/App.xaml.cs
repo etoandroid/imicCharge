@@ -16,7 +16,7 @@ public partial class App : Application
         {
             // This code will only compile and run on the Windows platform.
 #if WINDOWS
-                const int windowWidth = 450;
+                const int windowWidth = 600;
                 const int windowHeight = 850;
 
                 // Get the native window object
