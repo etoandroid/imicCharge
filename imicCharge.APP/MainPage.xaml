@@ -80,8 +80,6 @@
                                     Padding="7,4"
                                     MinimumHeightRequest="32"/>
                         </Grid>
-
-                        <Label x:Name="ChargeStatusLabel" HorizontalOptions="Center" TextColor="White" Margin="0,10,0,0"/>
                     </VerticalStackLayout>
                 </Border>
                 <Button
@@ -101,7 +99,8 @@
             </VerticalStackLayout>
         </ScrollView>
 
+        <controls:LoadingIndicator x:Name="BusyIndicator" InputTransparent="True" />
         <controls:CustomAlert x:Name="AlertView" InputTransparent="True" />
-
+        <controls:TopUpModal x:Name="TopUpDialog" InputTransparent="True" />
     </Grid>
 </ContentPage>

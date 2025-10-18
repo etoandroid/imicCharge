@@ -82,6 +82,7 @@ namespace imicCharge.API.Controllers
                     },
                 },
                 Mode = "payment",
+                CustomerEmail = user.Email,
                 SuccessUrl = "https://imiccharge.app/payment_success",
                 CancelUrl = "https://imiccharge.app/payment_cancel",
                 Metadata = new Dictionary<string, string>

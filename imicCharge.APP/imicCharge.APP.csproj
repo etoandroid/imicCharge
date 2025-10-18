@@ -44,9 +44,6 @@
 	  <Compile Update="ChargingPage.xaml.cs">
 	    <DependentUpon>ChargingPage.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="TopUpPage.xaml.cs">
-	    <DependentUpon>TopUpPage.xaml</DependentUpon>
-	  </Compile>
 	  <Compile Update="PaymentPage.xaml.cs">
 	    <DependentUpon>PaymentPage.xaml</DependentUpon>
 	  </Compile>
@@ -62,10 +59,10 @@
 	  <MauiXaml Update="Controls\LoadingIndicator.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="PaymentPage.xaml">
+	  <MauiXaml Update="Controls\TopUpModal.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="TopUpPage.xaml">
+	  <MauiXaml Update="PaymentPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>
