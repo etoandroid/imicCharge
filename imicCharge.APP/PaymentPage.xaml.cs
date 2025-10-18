@@ -10,82 +10,60 @@ public partial class PaymentPage : ContentPage
     public PaymentPage()
     {
         InitializeComponent();
-        // Bruk Navigated, ikkje Navigating
-        StripeWebView.Navigated += OnWebViewNavigated;
+        // Change to use the Navigating event
+        StripeWebView.Navigating += OnWebViewNavigating;
     }
 
     protected override void OnNavigatedTo(NavigatedToEventArgs args)
     {
         base.OnNavigatedTo(args);
-        StripeWebView.IsVisible = true; // Sørg for at den er synleg
-
         if (!string.IsNullOrEmpty(CheckoutUrl))
         {
-            StripeWebView.Source = new UrlWebViewSource { Url = CheckoutUrl };
+            StripeWebView.Source = CheckoutUrl;
         }
         else
         {
-            HandleMissingUrl();
+            PopupService.ShowAlertAsync("Feil", "Kunne ikkje laste betalingsside.", "OK");
+            Shell.Current.GoToAsync($"//{nameof(MainPage)}");
         }
     }
 
-    private async void HandleMissingUrl()
-    {
-        MainThread.BeginInvokeOnMainThread(async () =>
-        {
-            await PopupService.ShowAlertAsync("Feil", "Kunne ikkje laste betalingsside.", "OK");
-            if (Shell.Current.CurrentState.Location.OriginalString != "..")
-            {
-                await Shell.Current.GoToAsync("..");
-            }
-        });
-    }
-
-    private void OnWebViewNavigated(object? sender, WebNavigatedEventArgs e)
+    private async void OnWebViewNavigating(object? sender, WebNavigatingEventArgs e)
     {
         string currentUrl = e.Url;
-        System.Diagnostics.Debug.WriteLine($"WebView Navigated to: {currentUrl}, Result: {e.Result}");
 
-        bool shouldNavigateBack = false;
-
+        // Check if URL contains signal keywords to determine payment outcome
         if (currentUrl.Contains("payment_success"))
         {
-            // Sjekk resultatet for å vera sikker
-            if (e.Result == WebNavigationResult.Success || e.Result == WebNavigationResult.Failure)
-            {
-                shouldNavigateBack = true;
-            }
+            // Navigate back in the MAUI app
+            await Shell.Current.GoToAsync($"//{nameof(MainPage)}");
+
+            // Show success popup
+            await PopupService.ShowAlertAsync("Suksess", "Betaling er fullført.");
+
+            e.Cancel = true;
         }
         else if (currentUrl.Contains("payment_cancel"))
         {
-            if (e.Result == WebNavigationResult.Success || e.Result == WebNavigationResult.Failure)
-            {
-                shouldNavigateBack = true;
-            }
+            // Navigate back to user account page
+            await Shell.Current.GoToAsync($"//{nameof(MainPage)}");
+
+            // Show success popup
+            await PopupService.ShowAlertAsync("Betaling ikkje fullført", "Betalinga var avbroten av brukar.");
+
+            e.Cancel = true;
         }
-
-        if (shouldNavigateBack)
+        else
         {
-            // Skjul WebView umiddelbart
-            StripeWebView.IsVisible = false;
-            StripeWebView.Source = null;
-
-            // Naviger tilbake til MainPage MED EIN GONG utan popup
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                if (Shell.Current.CurrentState.Location.OriginalString != "..")
-                {
-                    await Shell.Current.GoToAsync("..");
-                }
-                // Ingen popup her lenger
-            });
+            // Allow Stripe proceed with navigation for other URLs
         }
     }
 
+    // Clean up the event handler when the page disappears
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        StripeWebView.Navigated -= OnWebViewNavigated;
-        StripeWebView.Source = null; // Stopp lasting
+        StripeWebView.Navigating -= OnWebViewNavigating;
+        StripeWebView.Source = null;
     }
 }
